@@ -12,43 +12,89 @@ namespace Homework1_6_10
     {
         static void Main(string[] args)
         {
-            Country country1 = new Country("Рим", ConsoleColor.Red, 6 , 6);
-            Country country2 = new Country("Греция", ConsoleColor.Blue, 6 , 6);
-            Battle battle = new Battle(country1, country2);
-            battle.Begin();
+            Country country1 = new Country("Рим", ConsoleColor.Red, 6, 6);
+            Country country2 = new Country("Греция", ConsoleColor.Blue, 6, 6);
+            Battle battle = new Battle(country1.SendTroop(), country2.SendTroop());
         }
     }
 
     class Battle
     {
-        //private Troop _troopCountry1;
-        //private Troop _troopCountry2;
-        private Country _country1;
-        private Country _country2;
-
+        private Troop _troopCountry1;
+        private Troop _troopCountry2;
+        private List<Soldier> _soldiers;
         private Battlefield _battlefield;
 
-        //public Battle(Troop troopCountry1, Troop troopCountry2)
-        //{
-        //    _troopCountry1 = troopCountry1;
-        //    _troopCountry2 = troopCountry2;
-        //    CreateBattlefield();
-        //}
-
-        public Battle(Country country1, Country country2)
+        public Battle(Troop troopCountry1, Troop troopCountry2)
         {
-            _country1 = country1;
-            _country2 = country2;
+            _troopCountry1 = troopCountry1;
+            _troopCountry2 = troopCountry2;
+            _battlefield = new Battlefield(_troopCountry1.Field, _troopCountry2.Field);
+            TakeAllSoldiers();
+
+            while (_troopCountry1.IsHaveSoldiers() && _troopCountry2.IsHaveSoldiers())
+            {
+                ShowData();
+                ClearDiedSoldiers();
+                MakeTurn();
+                Console.ReadKey();
+            }
+
+            if (_troopCountry1.IsHaveSoldiers() == false && _troopCountry2.IsHaveSoldiers() == false)
+            {
+                Console.WriteLine("Ничья");
+            }
+            else if (_troopCountry1.IsHaveSoldiers() == false)
+            {
+                Console.WriteLine("Победил/a  " + _troopCountry2.CountryName);
+            }
+            else if (_troopCountry2.IsHaveSoldiers() == false)
+            {
+                Console.WriteLine("Победил/a  " + _troopCountry1.CountryName);
+            }
+            else
+            {
+                Console.WriteLine("Ошибка");
+            }
         }
 
-        public void Begin()
+        private void ShowData()
         {
-            CreateBattlefield();
+            Console.Clear();
+            _battlefield.DrawMap();
+            Console.WriteLine();
+            _troopCountry1.ShowSoldiersInfo();
+            _troopCountry2.ShowSoldiersInfo();
         }
 
-        private void CreateBattlefield()
+        private void ClearDiedSoldiers()
         {
-            _battlefield = new Battlefield(_country1, _country2);
+            for (int i = 0; i < _soldiers.Count; i++)
+            {
+                if (_soldiers[i].IsAlive() == false)
+                {
+                    _soldiers.Remove(_soldiers[i]);
+                    i--;
+                }
+            }
+
+            _troopCountry1.ClearDiedSoldiers();
+            _troopCountry2.ClearDiedSoldiers();
+        }
+
+        private void MakeTurn()
+        {
+            foreach (var soldier in _soldiers)
+            {
+                _battlefield.MakeMove(soldier);
+            }
+        }
+
+        private void TakeAllSoldiers()
+        {
+            _soldiers = new List<Soldier>();
+            _soldiers.AddRange(_troopCountry1.GetSoldiers());
+            _soldiers.AddRange(_troopCountry2.GetSoldiers());
         }
     }
 
@@ -61,7 +107,7 @@ namespace Homework1_6_10
         private Troop _troop;
         private ConsoleColor _color;
 
-        public Country (string name, ConsoleColor color, int troopFieldWight = TroopFieldWidthDefault, int troopFieldLength = TroopFieldLengthDefault)
+        public Country(string name, ConsoleColor color, int troopFieldWight = TroopFieldWidthDefault, int troopFieldLength = TroopFieldLengthDefault)
         {
             _name = name;
             _color = color;
@@ -69,52 +115,72 @@ namespace Homework1_6_10
             _troop.PlaceSoldiers();
         }
 
-        public int GetTroopFieldWight()
+        public Troop SendTroop()
         {
-            return _troop.GetFieldWight();
-        }
-
-        public int GetTroopFieldLenght()
-        {
-            return _troop.GetFieldLength();
-        }
-
-        public FieldCell GetTroopFieldCell(int wight, int lenght)
-        {
-
+            return _troop;
         }
     }
 
     class Troop
     {
-        private string _countryName;
         private ConsoleColor _color;
         private Random _random;
         private List<Soldier> _soldiers;
-        private Field _field;
 
         public Troop(string countryName, ConsoleColor color, int fieldWight, int fieldLength)
         {
-            _countryName = countryName;
+            CountryName = countryName;
             _color = color;
             _random = new Random();
-            _field = new Field(fieldWight, fieldLength);
+            Field = new Field(fieldWight, fieldLength);
             CreateSoldiers();
         }
 
+        public string CountryName { get; private set; }
+        public Field Field { get; private set; }
+
         public void PlaceSoldiers()
         {
-            for (int i = _soldiers.Count-1; i >= 0; i-- )
+            for (int i = _soldiers.Count - 1; i >= 0; i--)
             {
-                _field.PlaceSoldier(_soldiers[i]);
-                _soldiers.Remove(_soldiers[i]);
+                Field.PlaceSoldier(_soldiers[i]);
+            }
+        }
+
+        public bool IsHaveSoldiers()
+        {
+            return _soldiers.Count > 0;
+        }
+
+        public void ClearDiedSoldiers()
+        {
+            for (int i = 0; i < _soldiers.Count; i++)
+            {
+                if (_soldiers[i].IsAlive() == false)
+                {
+                    _soldiers.Remove(_soldiers[i]);
+                    i--;
+                }
+            }
+        }
+
+        public List<Soldier> GetSoldiers()
+        {
+            return _soldiers;
+        }
+
+        public void ShowSoldiersInfo()
+        {
+            foreach (var soldier in _soldiers)
+            {
+                soldier.ShowInfo();
             }
         }
 
         private void CreateSoldiers()
         {
-            int minCountSoldiers = _field.Length * _field.Width / 5;
-            int maxCountSoldiers = _field.Length * _field.Width / 4;
+            int minCountSoldiers = Field.Length * Field.Width / 5;
+            int maxCountSoldiers = Field.Length * Field.Width / 4;
             int countSoldiers = _random.Next(minCountSoldiers, maxCountSoldiers + 1);
             _soldiers = new List<Soldier>();
 
@@ -123,26 +189,12 @@ namespace Homework1_6_10
                 _soldiers.Add(new Soldier(i, _color));
             }
         }
-
-        public int GetFieldWight()
-        {
-            return _field.Width;
-        }
-
-        public int GetFieldLength()
-        {
-            return _field.Length;
-        }
     }
 
     class Soldier
     {
-        private ConsoleColor _color;
         private int _number;
-        private int _damage;
         private int _health;
-        private int _firingRadius;
-        private bool _isBigArrow;
         private Skill _skill;
         private Random _random;
 
@@ -150,16 +202,78 @@ namespace Homework1_6_10
         {
             _number = number;
             _random = new Random();
-            _color = color;
+            Color = color;
             FillData();
+        }
+
+        public int WightCoordinate { get; private set; }
+        public int LenghtCoordinate { get; private set; }
+        public int FiringRadius { get; private set; }
+        public bool IsBigArrow { get; private set; }
+        public ConsoleColor Color { get; private set; }
+        public int Damage { get; private set; }
+
+        public void MoveUp()
+        {
+            WightCoordinate--;
+        }
+
+        public void MoveDown()
+        {
+            WightCoordinate++;
+        }
+
+        public void MoveLeft()
+        {
+            LenghtCoordinate--;
+        }
+
+        public void MoveRight()
+        {
+            LenghtCoordinate++;
+        }
+
+        public void TakeCoordinates(int wight, int lenght)
+        {
+            WightCoordinate = wight;
+            LenghtCoordinate = lenght;
         }
 
         public void Draw()
         {
             ConsoleColor color = Console.ForegroundColor;
-            Console.ForegroundColor = _color;
+            Console.ForegroundColor = Color;
             Console.Write(_number);
             Console.ForegroundColor = color;
+        }
+
+        public void TakeDamage(int damage)
+        {
+            _health -= damage;
+        }
+
+        public bool IsAlive()
+        {
+            return _health > 0;
+        }
+
+        public void ShowInfo()
+        {
+            Draw();
+            Console.Write(": ");
+            Console.Write(_health + " хп, " + Damage + " урона");
+            Console.Write(". Навык - " + _skill);
+            Console.Write(". Радиус полета стрелы - " + FiringRadius);
+            Console.Write(". Расскалывающиеся стрелы - ");
+
+            if (IsBigArrow)
+            {
+                Console.WriteLine("Да");
+            }
+            else
+            {
+                Console.WriteLine("Нет");
+            }
         }
 
         private void FillSkill()
@@ -176,14 +290,14 @@ namespace Homework1_6_10
             int maxDamageDefault = 3;
             int minHealthDefault = 4;
             int maxHealthDefault = 6;
-            int firingRadiusDefault = 8;
+            int firingRadiusDefault = 2;
             bool isBigArrowDefault = false;
 
             int minDamageStrong = 3;
             int maxDamageStrong = 6;
             int minHealthBig = 7;
             int maxHealthBig = 10;
-            int firingRadiusLongRange = 16;
+            int firingRadiusLongRange = 4;
             bool isBigArrowBigRange = true;
 
             FillSkill();
@@ -215,38 +329,121 @@ namespace Homework1_6_10
 
         private void FillCharacteristics(int minDamage, int maxDamage, int minHealth, int maxHealth, int firingRadius, bool isBigArrow)
         {
-            _damage = _random.Next(minDamage, maxDamage + 1);
+            Damage = _random.Next(minDamage, maxDamage + 1);
             _health = _random.Next(minHealth, maxHealth + 1);
-            _firingRadius = firingRadius;
-            _isBigArrow = isBigArrow;
-        }
-
-        public void TakeDamage(int damage)
-        {
-            _health -= damage;
-        }
-
-        public bool IsAlive()
-        {
-            return _health > 0;
+            FiringRadius = firingRadius;
+            IsBigArrow = isBigArrow;
         }
     }
 
-    class Battlefield: Field
+    class Battlefield : Field
     {
-        private Country _country1;
-        private Country _country2;
+        private Field _troop1Field;
+        private Field _troop2Field;
+        private Random _random;
 
-        public Battlefield (Country country1, Country country2) : base(MaxNumber(country1.GetTroopFieldWight(), country2.GetTroopFieldWight()), country1.GetTroopFieldLenght() + country2.GetTroopFieldLenght())
+        public Battlefield(Field troop1Field, Field troop2Field) : base(MaxNumber(troop1Field.Width, troop2Field.Width), troop1Field.Length + troop2Field.Length)
         {
-            _country1 = country1;
-            _country2 = country2;
+            _troop1Field = troop1Field;
+            _troop2Field = troop2Field;
+            _random = new Random();
             FillUselessCells();
             FillSoldiers();
-            FullWriteLine();
         }
 
-        static private int MaxNumber(int number1, int number2)
+        public void DrawMap()
+        {
+            for (int i = 0; i < Cells.GetLength(0); i++)
+            {
+                for (int j = 0; j < Cells.GetLength(1); j++)
+                {
+                    if (Cells[i, j] == null)
+                    {
+                        Console.Write("X");
+                    }
+                    else
+                    {
+                        Cells[i, j].DrawSoldier();
+                    }
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        public void MakeMove(Soldier soldier)
+        {
+            int wight = soldier.WightCoordinate;
+            int lenght = soldier.LenghtCoordinate;
+
+            if (TryFindEnemy(soldier, out FieldCell enemyCell))
+            {
+                enemyCell.Attack(soldier.Damage);
+
+                if (soldier.IsBigArrow)
+                {
+                    MakeBigDamage(enemyCell, soldier);
+                }
+            }
+            else if (soldier.IsAlive())
+            {
+                int changeMode;
+                int allModes = 4;
+
+                changeMode = _random.Next(0, allModes);
+
+                if (changeMode == 0)
+                {
+                    if (wight - 1 > 0)
+                    {
+                        if (Cells[wight - 1, lenght].IsHaveSoldier() == false)
+                        {
+                            soldier.MoveUp();
+                            Cells[wight - 1, lenght].FillSoldier(soldier);
+                            Cells[wight, lenght].FillSoldier(null);
+                        }
+                    }
+                }
+                else if (changeMode == 1)
+                {
+                    if (wight + 1 < Width)
+                    {
+                        if (Cells[wight + 1, lenght].IsHaveSoldier() == false)
+                        {
+                            soldier.MoveDown();
+                            Cells[wight + 1, lenght].FillSoldier(soldier);
+                            Cells[wight, lenght].FillSoldier(null);
+                        }
+                    }
+                }
+                else if (changeMode == 2)
+                {
+                    if (lenght - 1 > 0)
+                    {
+                        if (Cells[wight, lenght - 1].IsHaveSoldier() == false)
+                        {
+                            soldier.MoveLeft();
+                            Cells[wight, lenght - 1].FillSoldier(soldier);
+                            Cells[wight, lenght].FillSoldier(null);
+                        }
+                    }
+                }
+                else if (changeMode == 3)
+                {
+                    if (lenght + 1 < Length)
+                    {
+                        if (Cells[wight, lenght + 1].IsHaveSoldier() == false)
+                        {
+                            soldier.MoveRight();
+                            Cells[wight, lenght + 1].FillSoldier(soldier);
+                            Cells[wight, lenght].FillSoldier(null);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static int MaxNumber(int number1, int number2)
         {
             if (number1 > number2)
             {
@@ -256,7 +453,7 @@ namespace Homework1_6_10
             return number2;
         }
 
-        static private int MinNumber(int number1, int number2)
+        private static int MinNumber(int number1, int number2)
         {
             if (number1 < number2)
             {
@@ -264,6 +461,103 @@ namespace Homework1_6_10
             }
 
             return number2;
+        }
+
+        private void MakeBigDamage(FieldCell enemyCell, Soldier soldier)
+        {
+            if (enemyCell.WightCoordinate + 1 < Width)
+            {
+                Cells[enemyCell.WightCoordinate + 1, enemyCell.LenghtCoordinate].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.LenghtCoordinate + 1 < Length)
+            {
+                Cells[enemyCell.WightCoordinate, enemyCell.LenghtCoordinate + 1].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.LenghtCoordinate - 1 > 0)
+            {
+                Cells[enemyCell.WightCoordinate, enemyCell.LenghtCoordinate - 1].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.WightCoordinate - 1 > 0)
+            {
+                Cells[enemyCell.WightCoordinate - 1, enemyCell.LenghtCoordinate].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.WightCoordinate + 1 < Width && enemyCell.LenghtCoordinate + 1 < Length)
+            {
+                Cells[enemyCell.WightCoordinate + 1, enemyCell.LenghtCoordinate + 1].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.WightCoordinate + 1 < Width && enemyCell.LenghtCoordinate - 1 > 0)
+            {
+                Cells[enemyCell.WightCoordinate + 1, enemyCell.LenghtCoordinate - 1].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.WightCoordinate - 1 > 0 && enemyCell.LenghtCoordinate + 1 < Length)
+            {
+                Cells[enemyCell.WightCoordinate - 1, enemyCell.LenghtCoordinate + 1].Attack(soldier.Damage);
+            }
+
+            if (enemyCell.WightCoordinate - 1 > 0 && enemyCell.LenghtCoordinate - 1 > 0)
+            {
+                Cells[enemyCell.WightCoordinate - 1, enemyCell.LenghtCoordinate - 1].Attack(soldier.Damage);
+            }
+        }
+
+        private bool TryFindEnemy(Soldier soldier, out FieldCell enemyCell)
+        {
+            for (int i = 1; i <= soldier.FiringRadius; i++)
+            {
+                if (soldier.WightCoordinate - i > 0)
+                {
+                    if (Cells[soldier.WightCoordinate - i, soldier.LenghtCoordinate].IsHaveSoldier())
+                    {
+                        if (Cells[soldier.WightCoordinate - i, soldier.LenghtCoordinate].IsEnemy(soldier.Color))
+                        {
+                            enemyCell = Cells[soldier.WightCoordinate - i, soldier.LenghtCoordinate];
+                            return true;
+                        }
+                    }
+                }
+                if (soldier.WightCoordinate + i < Width)
+                {
+                    if (Cells[soldier.WightCoordinate + i, soldier.LenghtCoordinate].IsHaveSoldier())
+                    {
+                        if (Cells[soldier.WightCoordinate + i, soldier.LenghtCoordinate].IsEnemy(soldier.Color))
+                        {
+                            enemyCell = Cells[soldier.WightCoordinate + i, soldier.LenghtCoordinate];
+                            return true;
+                        }
+                    }
+                }
+                if (soldier.LenghtCoordinate - i > 0)
+                {
+                    if (Cells[soldier.WightCoordinate, soldier.LenghtCoordinate - i].IsHaveSoldier())
+                    {
+                        if (Cells[soldier.WightCoordinate, soldier.LenghtCoordinate - i].IsEnemy(soldier.Color))
+                        {
+                            enemyCell = Cells[soldier.WightCoordinate, soldier.LenghtCoordinate - i];
+                            return true;
+                        }
+                    }
+                }
+                if (soldier.LenghtCoordinate + i < Length)
+                {
+                    if (Cells[soldier.WightCoordinate, soldier.LenghtCoordinate + i].IsHaveSoldier())
+                    {
+                        if (Cells[soldier.WightCoordinate, soldier.LenghtCoordinate + i].IsEnemy(soldier.Color))
+                        {
+                            enemyCell = Cells[soldier.WightCoordinate, soldier.LenghtCoordinate + i];
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            enemyCell = null;
+            return false;
         }
 
         private void FillSoldiers()
@@ -295,34 +589,13 @@ namespace Homework1_6_10
                 FillCells(endWidth, endLength, true, beginWidth, beginLength);
             }
         }
-
-        private void FullWriteLine()
-        {
-            for (int i = 0; i < Cells.GetLength(0); i++)
-            {
-                for (int j = 0; j < Cells.GetLength(1); j++)
-                {
-                    if (Cells[i, j] == null)
-                    {
-                        Console.Write("X");
-                    }
-                    else
-                    {
-                        Cells[i, j].DrawSoldier();
-                    }
-
-                }
-
-                Console.WriteLine();
-            }
-        }
     }
 
     class Field
     {
         private Random _random;
 
-        public Field (int width, int length)
+        public Field(int width, int length)
         {
             Width = width;
             Length = length;
@@ -348,6 +621,7 @@ namespace Homework1_6_10
             while (Cells[cellNumber / Length, cellNumber % Length].IsHaveSoldier());
 
             Cells[cellNumber / Length, cellNumber % Length].FillSoldier(soldier);
+            soldier.TakeCoordinates(cellNumber / Length, cellNumber % Length);
         }
 
         protected void FillCells(int endWidth, int endLength, bool isNull, int beginWidth = 0, int beginLength = 0)
@@ -362,20 +636,24 @@ namespace Homework1_6_10
                     }
                     else
                     {
-                        Cells[i, j] = new FieldCell();
+                        Cells[i, j] = new FieldCell(i, j);
                     }
-                
                 }
             }
         }
 
-        protected void CopyCells(int endWidth, int endLength, Country country, int beginWidth = 0, int beginLength = 0)
+        protected void CopyCells(int endWidth, int endLength, Field field, int beginWidth = 0, int beginLength = 0)
         {
             for (int i = beginWidth; i < endWidth; i++)
             {
                 for (int j = beginLength; j < endLength; j++)
                 {
                     Cells[i, j] = field.Cells[i - beginWidth, j - beginLength];
+
+                    if (beginWidth != 0 || beginLength != 0)
+                    {
+                        Cells[i, j].ShiftCoordinates(beginWidth, beginLength);
+                    }
                 }
             }
         }
@@ -385,14 +663,29 @@ namespace Homework1_6_10
     {
         private Soldier _soldier;
 
-        public FieldCell()
+        public FieldCell(int wightCoordinate, int lenghtCoordinate)
         {
+            WightCoordinate = wightCoordinate;
+            LenghtCoordinate = lenghtCoordinate;
             _soldier = null;
         }
+
+        public int WightCoordinate { get; private set; }
+        public int LenghtCoordinate { get; private set; }
 
         public void FillSoldier(Soldier soldier)
         {
             _soldier = soldier;
+
+            TakeSoldierCoordinates();
+        }
+
+        public void ShiftCoordinates(int wightCoordinate, int lenghtCoordinate)
+        {
+            WightCoordinate += wightCoordinate;
+            LenghtCoordinate += lenghtCoordinate;
+
+            TakeSoldierCoordinates();
         }
 
         public void Attack(int damage)
@@ -410,9 +703,17 @@ namespace Homework1_6_10
 
         public bool IsHaveSoldier()
         {
-            if (_soldier != null)
+            return _soldier != null;
+        }
+
+        public bool IsEnemy(ConsoleColor color)
+        {
+            if (IsHaveSoldier())
             {
-                return true;
+                if (_soldier.Color != color)
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -427,6 +728,14 @@ namespace Homework1_6_10
             else
             {
                 Console.Write(".");
+            }
+        }
+
+        private void TakeSoldierCoordinates()
+        {
+            if (IsHaveSoldier())
+            {
+                _soldier.TakeCoordinates(WightCoordinate, LenghtCoordinate);
             }
         }
     }
